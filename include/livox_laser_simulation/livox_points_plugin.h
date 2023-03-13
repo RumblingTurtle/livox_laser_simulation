@@ -4,105 +4,134 @@
 
 #ifndef SRC_GAZEBO_LIVOX_POINTS_PLUGIN_H
 #define SRC_GAZEBO_LIVOX_POINTS_PLUGIN_H
-#include <ros/node_handle.h>
-#include <tf/transform_broadcaster.h>
-#include <gazebo/plugins/RayPlugin.hh>
+#include "livox_laser_simulation/csv_reader.hpp"
+#include "livox_laser_simulation/livox_ode_multiray_shape.h"
+#include "livox_laser_simulation/livox_point_xyzrtl.h"
 #include "livox_ode_multiray_shape.h"
+#include <cmath>
+#include <gazebo/physics/Model.hh>
+#include <gazebo/physics/MultiRayShape.hh>
+#include <gazebo/physics/PhysicsEngine.hh>
+#include <gazebo/physics/World.hh>
+#include <gazebo/plugins/RayPlugin.hh>
+#include <gazebo/sensors/RaySensor.hh>
+#include <gazebo/transport/Node.hh>
+#include <livox_ros_driver/CustomMsg.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <ros/node_handle.h>
+#include <ros/ros.h>
+#include <sensor_msgs/PointCloud.h>
+#include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/point_cloud2_iterator.h>
+#include <sensor_msgs/point_cloud_conversion.h>
+#include <tf/transform_broadcaster.h>
 
 namespace gazebo {
 struct AviaRotateInfo {
-    double time;
-    double azimuth;
-    double zenith;
+  double time;
+  double azimuth;
+  double zenith;
+  std::uint8_t line;
 };
 
 class LivoxPointsPlugin : public RayPlugin {
- public:
-    LivoxPointsPlugin();
+public:
+  LivoxPointsPlugin();
 
-    virtual ~LivoxPointsPlugin();
+  virtual ~LivoxPointsPlugin();
 
-    void Load(sensors::SensorPtr _parent, sdf::ElementPtr _sdf);
+  void Load(sensors::SensorPtr _parent, sdf::ElementPtr _sdf);
 
- private:
-    ignition::math::Angle AngleMin() const;
+private:
+  ignition::math::Angle AngleMin() const;
 
-    ignition::math::Angle AngleMax() const;
+  ignition::math::Angle AngleMax() const;
 
-    double GetAngleResolution() const GAZEBO_DEPRECATED(7.0);
+  double GetAngleResolution() const GAZEBO_DEPRECATED(7.0);
 
-    double AngleResolution() const;
+  double AngleResolution() const;
 
-    double GetRangeMin() const GAZEBO_DEPRECATED(7.0);
+  double GetRangeMin() const GAZEBO_DEPRECATED(7.0);
 
-    double RangeMin() const;
+  double RangeMin() const;
 
-    double GetRangeMax() const GAZEBO_DEPRECATED(7.0);
+  double GetRangeMax() const GAZEBO_DEPRECATED(7.0);
 
-    double RangeMax() const;
+  double RangeMax() const;
 
-    double GetRangeResolution() const GAZEBO_DEPRECATED(7.0);
+  double GetRangeResolution() const GAZEBO_DEPRECATED(7.0);
 
-    double RangeResolution() const;
+  double RangeResolution() const;
 
-    int GetRayCount() const GAZEBO_DEPRECATED(7.0);
+  int GetRayCount() const GAZEBO_DEPRECATED(7.0);
 
-    int RayCount() const;
+  int RayCount() const;
 
-    int GetRangeCount() const GAZEBO_DEPRECATED(7.0);
+  int GetRangeCount() const GAZEBO_DEPRECATED(7.0);
 
-    int RangeCount() const;
+  int RangeCount() const;
 
-    int GetVerticalRayCount() const GAZEBO_DEPRECATED(7.0);
+  int GetVerticalRayCount() const GAZEBO_DEPRECATED(7.0);
 
-    int VerticalRayCount() const;
+  int VerticalRayCount() const;
 
-    int GetVerticalRangeCount() const GAZEBO_DEPRECATED(7.0);
+  int GetVerticalRangeCount() const GAZEBO_DEPRECATED(7.0);
 
-    int VerticalRangeCount() const;
+  int VerticalRangeCount() const;
 
-    ignition::math::Angle VerticalAngleMin() const;
+  ignition::math::Angle VerticalAngleMin() const;
 
-    ignition::math::Angle VerticalAngleMax() const;
+  ignition::math::Angle VerticalAngleMax() const;
 
-    double GetVerticalAngleResolution() const GAZEBO_DEPRECATED(7.0);
+  double GetVerticalAngleResolution() const GAZEBO_DEPRECATED(7.0);
 
-    double VerticalAngleResolution() const;
+  double VerticalAngleResolution() const;
 
- protected:
-    virtual void OnNewLaserScans();
+  void getCustomMsg(std::vector<std::pair<int, AviaRotateInfo>> &points_pair,
+                    livox_ros_driver::CustomMsg &);
+  void getNormalMsg(std::vector<std::pair<int, AviaRotateInfo>> &points_pair,
+                    sensor_msgs::PointCloud2 &);
 
- private:
-    void InitializeRays(std::vector<std::pair<int, AviaRotateInfo>>& points_pair,
-                        boost::shared_ptr<physics::LivoxOdeMultiRayShape>& ray_shape);
+protected:
+  virtual void OnNewLaserScans();
 
-    void InitializeScan(msgs::LaserScan*& scan);
+private:
+  void
+  InitializeRays(std::vector<std::pair<int, AviaRotateInfo>> &points_pair,
+                 boost::shared_ptr<physics::LivoxOdeMultiRayShape> &ray_shape);
 
-    void SendRosTf(const ignition::math::Pose3d& pose, const std::string& father_frame, const std::string& child_frame);
+  void InitializeScan(msgs::LaserScan *&scan);
 
-    boost::shared_ptr<physics::LivoxOdeMultiRayShape> rayShape;
-    gazebo::physics::CollisionPtr laserCollision;
-    physics::EntityPtr parentEntity;
-    transport::PublisherPtr scanPub;
-    sdf::ElementPtr sdfPtr;
-    msgs::LaserScanStamped laserMsg;
-    transport::NodePtr node;
-    gazebo::sensors::SensorPtr raySensor;
-    std::vector<AviaRotateInfo> aviaInfos;
+  void SendRosTf(const ignition::math::Pose3d &pose,
+                 const std::string &father_frame,
+                 const std::string &child_frame);
 
-    std::shared_ptr<ros::NodeHandle> rosNode;
-    ros::Publisher rosPointPub;
-    std::shared_ptr<tf::TransformBroadcaster> tfBroadcaster;
+  boost::shared_ptr<physics::LivoxOdeMultiRayShape> rayShape;
+  gazebo::physics::CollisionPtr laserCollision;
+  physics::EntityPtr parentEntity;
+  transport::PublisherPtr scanPub;
+  sdf::ElementPtr sdfPtr;
+  msgs::LaserScanStamped laserMsg;
+  transport::NodePtr node;
+  std::string msg_type;
+  gazebo::sensors::SensorPtr raySensor;
+  std::vector<AviaRotateInfo> aviaInfos;
 
-    int64_t samplesStep = 0;
-    int64_t currStartIndex = 0;
-    int64_t maxPointSize = 1000;
-    int64_t downSample = 1;
+  std::shared_ptr<ros::NodeHandle> rosNode;
+  ros::Publisher rosPointPub;
+  std::shared_ptr<tf::TransformBroadcaster> tfBroadcaster;
 
-    double maxDist = 400.0;
-    double minDist = 0.1;
+  int64_t samplesStep = 0;
+  int64_t currStartIndex = 0;
+  int64_t maxPointSize = 1000;
+  int64_t downSample = 1;
+
+  double maxDist = 400.0;
+  double minDist = 0.1;
 };
 
-}  // namespace gazebo
+} // namespace gazebo
 
-#endif  // SRC_GAZEBO_LIVOX_POINTS_PLUGIN_H
+#endif // SRC_GAZEBO_LIVOX_POINTS_PLUGIN_H
